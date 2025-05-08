@@ -1,68 +1,70 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu May  8 14:08:45 2025
+Created on Thu May  8 19:54:35 2025
 
 @author: User
 """
 
-import os
-import asyncio
-from twitchio.ext import commands
 import discord
-from discord.ext import commands as discord_commands
-from datetime import datetime
+import time
+from twitchio import Client, Message
+import asyncio
 from dotenv import load_dotenv
+import os
 
-# 讀取 .env 檔案
+# 讀取 .env 配置
 load_dotenv()
 
-# 環境變數
-TWITCH_TOKEN = os.getenv("TWITCH_OAUTH_TOKEN")
-TWITCH_CHANNELS = os.getenv("TWITCH_CHANNELS").split(",")
-TARGET_USERS = set([u.strip().lower() for u in os.getenv("TARGET_USERNAMES").split(",")])
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
+# Discord bot 設定
+DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
+GUILD_ID = os.getenv('GUILD_ID')  # 伺服器 ID
+CHANNEL_ID = os.getenv('CHANNEL_ID')  # 頻道 ID
 
-# --- Twitch Bot ---
-class TwitchBot(commands.Bot):
+# 初始化 Discord 客戶端
+discord_client = discord.Client()
+
+@discord_client.event
+async def on_ready():
+    print(f'Logged in as {discord_client.user}')
+
+# 發送訊息到 Discord 頻道
+async def send_to_discord(message):
+    channel = discord_client.get_channel(int(CHANNEL_ID))
+    await channel.send(message)
+
+# Twitch bot 設定
+TWITCH_TOKEN = os.getenv('TWITCH_TOKEN')
+TWITCH_NICK = os.getenv('TWITCH_NICK')
+TWITCH_CHANNEL = os.getenv('TWITCH_CHANNEL')
+
+class TwitchBot(Client):
     def __init__(self):
-        super().__init__(token=TWITCH_TOKEN, prefix="!", initial_channels=TWITCH_CHANNELS)
+        super().__init__(token=TWITCH_TOKEN, nick=TWITCH_NICK)
 
     async def event_ready(self):
-        print(f"[Twitch] Bot 已登入為: {self.nick}")
+        print(f'Logged in as {self.nick}')
+        channel = await self.join_channels([TWITCH_CHANNEL])
+        print(f'Joined channel: {channel.name}')
 
-    async def event_message(self, message):
-        if message.echo:
-            return
+    async def event_message(self, message: Message):
+        if message.author.name.lower() != TWITCH_NICK.lower():
+            timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
+            log_message = f'[{timestamp}] {message.author.name}: {message.content}'
 
-        username = message.author.name.lower()
-        if username in TARGET_USERS:
-            timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-            msg = f"{timestamp} @{username} 在 #{message.channel.name} 說：{message.content}"
-            print(msg)
-            await send_to_discord(msg)
+            # 把訊息紀錄到 Discord
+            await send_to_discord(log_message)
 
-# --- Discord Bot 客戶端（只負責傳訊息） ---
-discord_client = discord.Client(intents=discord.Intents.default())
+            # 可以選擇將訊息記錄在本地的 .txt 檔案
+            with open(f'logs/{message.author.name}.txt', 'a') as f:
+                f.write(log_message + '\n')
 
-async def send_to_discord(content):
-    await discord_client.wait_until_ready()
-    channel = discord_client.get_channel(DISCORD_CHANNEL_ID)
-    if channel:
-        await channel.send(content)
-
-# --- 同時啟動 Twitch 和 Discord ---
-async def main():
+# 啟動 Discord bot 和 Twitch bot
+async def start_bots():
     twitch_bot = TwitchBot()
+    discord_thread = asyncio.create_task(discord_client.start(DISCORD_TOKEN))
+    twitch_thread = asyncio.create_task(twitch_bot.start())
+    await asyncio.gather(discord_thread, twitch_thread)
 
-    # 並行執行 Twitch bot 和 Discord bot
-    await asyncio.gather(
-        discord_client.start(DISCORD_TOKEN),
-        twitch_bot.start()
-    )
-
+# 執行程式
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("Bot 已手動停止。")
+    asyncio.run(start_bots())
