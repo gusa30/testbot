@@ -1,3 +1,4 @@
 twitchio
 discord.py
 python-dotenv
+flask

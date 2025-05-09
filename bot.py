@@ -11,6 +11,25 @@ from twitchio.ext import commands
 from discord import Intents, Client
 from dotenv import load_dotenv
 
+# web_server.py
+from flask import Flask
+from threading import Thread
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return 'Bot is running!'
+
+def run():
+    app.run(host='0.0.0.0', port=3000)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+keep_alive()
+
 # 讀取 .env 環境變數
 load_dotenv()
 
@@ -54,6 +73,8 @@ async def send_to_discord(content):
         await channel.send(content)
     else:
         print("❌ 無法找到 Discord 頻道")
+
+
 
 # 啟動兩個 bot
 async def main():
