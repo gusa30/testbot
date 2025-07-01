@@ -38,9 +38,9 @@ discord_client = discord.Client(intents=intents)
 class TwitchBot(commands.Bot):
     def __init__(self):
         super().__init__(
-            token=TWITCH_TOKEN,
-            prefix='!',
-            initial_channels=TWITCH_CHANNELS
+            token=os.getenv("TWITCH_TOKEN"),
+            prefix="!",
+            initial_channels=os.getenv("TWITCH_CHANNELS", "").split(",")
         )
 
     async def event_ready(self):
