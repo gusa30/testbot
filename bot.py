@@ -38,10 +38,12 @@ discord_client = discord.Client(intents=intents)
 class TwitchBot(commands.Bot):
     def __init__(self):
         super().__init__(
-            token=os.getenv("TWITCH_TOKEN"),
-            prefix="!",
-            initial_channels=os.getenv("TWITCH_CHANNELS", "").split(",")
+            irc_token=TWITCH_TOKEN,
+            nick=TWITCH_NICK,
+            prefix='!',
+            initial_channels=TWITCH_CHANNELS
         )
+
 
     async def event_ready(self):
         print(f'Logged into Twitch as | {self.nick}')
