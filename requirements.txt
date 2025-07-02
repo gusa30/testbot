@@ -1,4 +1,4 @@
-twitchio>=2.9.0
+twitchio==2.9.0
 discord.py
 python-dotenv
 flask
